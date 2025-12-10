@@ -44,7 +44,7 @@ Basic failsafe (CRSF loss)
 
 CRSF over UART (ExpressLRS)
 
-16-channel CRSF decoding
+8-channel CRSF decoding
 
 Channel mapping configurable
 
@@ -109,14 +109,6 @@ Ensure proper IMU orientation
 
 Use stable 5V BEC
 
-📁 Project Structure
-/src
- ├── crsf.c/.h       // CRSF parser (ELRS)
- ├── imu.c/.h        // IMU driver
- ├── mixer.c/.h      // Fixed-wing mixer
- ├── pwm.c/.h        // PWM servo output
- ├── fc.c            // Flight control loop
- └── utils/          // Helpers, filters, math
 
 ✈️ Fixed-Wing Logic
 ✔ Gyro Stabilization
@@ -171,34 +163,14 @@ LC power filter
 
  Servo PWM stable
 
- Fixed-wing mixer
+ Gyro stabilization (future)
 
- Gyro stabilization
-
- Level mode
-
- Advanced failsafe
+ Advanced failsafe (future)
 
  OSD support (future)
 
- Basic autopilot (RTH/FBWA-lite)
+ Basic autopilot (future)
 
-👨‍💻 Contributing
-
-Contributions are welcome:
-
-Bug fixes
-
-CRSF improvements
-
-New sensors
-
-Mixer improvements
-
-New flight modes
-
-Repository:
-https://github.com/pehfpv/bplfc
 
 📜 License
 

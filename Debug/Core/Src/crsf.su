@@ -1,0 +1,5 @@
+../Core/Src/crsf.c:13:17:millis	8	static
+../Core/Src/crsf.c:15:12:crsf_raw_to_us	16	static
+../Core/Src/crsf.c:19:6:crsf_init	4	static
+../Core/Src/crsf.c:24:6:crsf_parse	32	static
+../Core/Src/crsf.c:50:6:crsf_on_byte	16	static

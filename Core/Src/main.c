@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "crsf.h"
 #include <string.h>
 #include <stdarg.h>
 /* USER CODE END Includes */
@@ -51,15 +52,17 @@ UART_HandleTypeDef huart2;
 USART_HandleTypeDef husart3;
 
 /* USER CODE BEGIN PV */
-uint8_t rx_byte;
-uint8_t crsf_buf[64];
-uint8_t crsfIndex = 0;
-uint8_t frame_len = 0;
+//uint8_t rx_byte;
+//uint8_t crsf_buf[64];
+//uint8_t crsfIndex = 0;
+//uint8_t frame_len = 0;
+//volatile uint32_t last_packet_ms = 0;
+//volatile uint8_t packet_received_flag = 0;
 
-uint16_t crsf_raw[16];
-uint16_t channels_us[16];
-uint32_t last_packet_ms = 0;
-uint8_t packet_received_flag = 0;
+//uint16_t crsf_raw[16];
+//uint16_t channels_us[16];
+//uint32_t last_packet_ms = 0;
+//uint8_t packet_received_flag = 0;
 
 #define CRSF_SYNC 0xC8
 /* USER CODE END PV */
@@ -122,27 +125,27 @@ void parse_crsf(uint8_t *buf){
         bitcount -= 11;
 
         // convert 172–1811 → 1000–2000us
-        channels_us[ch] = ((crsf_raw[ch] - 172) * 1000 / (1811 - 172)) + 1000;
+        crsf_channels_us[ch] = ((crsf_raw[ch] - 172) * 1000 / (1811 - 172)) + 1000;
     }
 
-    last_packet_ms = millis();
-    packet_received_flag = 1;
+    crsf_last_packet_ms  = millis();
+    crsf_packet_received = 1;
 }
 
 
 void set_pwm(){
     /* USER CODE BEGIN set_pwm */
     // TIM3 CH1–CH4
-    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_1,channels_us[0]);
-    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2,channels_us[1]);
-    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,channels_us[2]);
-    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_4,channels_us[3]);
+    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_1,crsf_channels_us[0]);
+    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2,crsf_channels_us[1]);
+    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,crsf_channels_us[2]);
+    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_4,crsf_channels_us[3]);
 
     // TIM4 CH1–CH4
-    __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_1,channels_us[4]);
-    __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_2,channels_us[5]);
-    __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,channels_us[6]);
-    __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,channels_us[7]);
+    __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_1,crsf_channels_us[4]);
+    __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_2,crsf_channels_us[5]);
+    __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,crsf_channels_us[6]);
+    __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,crsf_channels_us[7]);
     /* USER CODE END set_pwm */
 }
 /* USER CODE END PFP */
@@ -151,47 +154,14 @@ void set_pwm(){
 /* USER CODE BEGIN 0 */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    /* USER CODE BEGIN RxCpltCallback 0 */
-    if (huart->Instance != USART1) return;
-
-
-    uint8_t b = rx_byte;
-
-    // CRSF decoding state machine
-    if (crsfIndex == 0)
+    if (huart->Instance == USART1)
     {
-        if (b == 0xC8) // CRSF_SYNC
-        {
-            crsf_buf[crsfIndex++] = b;
-        }
+        crsf_on_byte(rx_byte);
+
+        HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
     }
-    else if (crsfIndex == 1)
-    {
-        frame_len = b;
-        crsf_buf[crsfIndex++] = b;
-
-        if (frame_len > 62)
-            crsfIndex = 0; // reset jika tidak valid
-    }
-    else
-    {
-        crsf_buf[crsfIndex++] = b;
-
-        if (crsfIndex == frame_len + 2)
-        {
-            parse_crsf(crsf_buf);
-            crsfIndex = 0;
-        }
-    }
-
-    // Debug: Blink tiap byte
-//    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-    packet_received_flag = 1;
-
-    // Restart RX interrupt
-    HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
-    /* USER CODE END RxCpltCallback 0 */
 }
+
 
 /* USER CODE END 0 */
 
@@ -234,7 +204,7 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-
+  crsf_init();
   HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
 
 //  for(int i=0;i<16;i++) channels_us[i]=1500; // default PWM neutral
@@ -264,9 +234,9 @@ int main(void)
 	      set_pwm();
 
 	      // --- LED indicator packet received ---
-	      if(packet_received_flag){
+	      if(crsf_packet_received ){
 	          HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-	          packet_received_flag = 0;
+	          crsf_packet_received = 0;
 	      }
 
 	      // --- Debug every 50 ms ---
@@ -274,10 +244,10 @@ int main(void)
 	      if (millis() - last_debug > 50) {
 	          last_debug = millis();
 	          debug_printf("CH1=%d CH2=%d CH3=%d CH4=%d | CH5=%d CH6=%d CH7=%d CH8=%d\r\n",
-	                       channels_us[0],channels_us[1],
-	                       channels_us[2],channels_us[3],
-	                       channels_us[4],channels_us[5],
-	                       channels_us[6],channels_us[7]);
+	        		  crsf_channels_us[0],crsf_channels_us[1],
+					  crsf_channels_us[2],crsf_channels_us[3],
+					  crsf_channels_us[4],crsf_channels_us[5],
+					  crsf_channels_us[6],crsf_channels_us[7]);
 	      }
     /* USER CODE END WHILE */
 
