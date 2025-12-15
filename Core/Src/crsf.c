@@ -7,10 +7,6 @@ uint8_t crsf_frame_len = 0;
 
 uint16_t crsf_raw[16];
 uint16_t crsf_channels_us[16];
-uint32_t crsf_last_packet_ms = 0;
-uint8_t crsf_packet_received = 0;
-
-static uint32_t millis(){ return HAL_GetTick(); }
 
 static int crsf_raw_to_us(uint16_t v){
     return ((v - 172) * 1000 / (1811 - 172)) + 1000;
@@ -42,9 +38,6 @@ void crsf_parse(uint8_t *buf)
 
         crsf_channels_us[ch] = crsf_raw_to_us(crsf_raw[ch]);
     }
-
-    crsf_last_packet_ms = millis();
-    crsf_packet_received = 1;
 }
 
 void crsf_on_byte(uint8_t b)
